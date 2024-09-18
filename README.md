@@ -1,5 +1,5 @@
 # ALPCD_6
 
-# Adriana Couto a106869
-# Luana Vilaverde a106833
-# Maria Castro a106828
+Adriana Couto A106869
+Luana Vilaverde A106833
+Maria Castro A106828
