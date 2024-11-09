@@ -33,17 +33,12 @@ def salary(n: int):
     """ Extrai a informação relativa ao salário oferecido por uma determinado job id"""
     #mesmo que o valor seja 'wage a null'; neste caso usar expressões regulares para procurar noutros campos relevantes
 
-
-
-
-
 @app.command()
 def skills(skill: List[str], datainicial: str, datafinal: str):
     """ Quais os trabalhos que requerem uma determinada lista de skills, num determinado período de tempo """    
     jobs = []
     page = 1
     
-    # Coleta de todos os trabalhos paginados
     while True:
         data = response(page) 
         if 'results' not in data or not data['results']:
@@ -51,21 +46,18 @@ def skills(skill: List[str], datainicial: str, datafinal: str):
         jobs.extend(data['results']) 
         page += 1
 
-    # Conversão de datas de entrada para objetos datetime
-    datainicial = datetime.strptime(datainicial, '%Y-%m-%d')
+    datainicial = datetime.strptime(datainicial, '%Y-%m-%d') # converter as datas para datetime
     datafinal = datetime.strptime(datafinal, '%Y-%m-%d')
     
-    # Filtragem dos trabalhos com base nas skills e nas datas de publicação
     jobs_filtered = []
     for job in jobs:
         publishedAt = job['publishedAt']
         dataApi = datetime.strptime(publishedAt.split(' ')[0], '%Y-%m-%d')
         if datainicial <= dataApi <= datafinal:
-            job_skills = job.get('body', '').lower()  # Converter para minúsculas para comparação
+            job_skills = job.get('body', '').lower()  # converter para minúsculas para facilitar a comparação
             if all(s.lower() in job_skills for s in skill):
                 jobs_filtered.append(job)
 
-    # Preparação da saída
     output = []
     for job in jobs_filtered:
         job_info = {
@@ -78,12 +70,11 @@ def skills(skill: List[str], datainicial: str, datafinal: str):
         }
         output.append(job_info)
     
-    # Impressão dos resultados
+    # output em formato JSON
     if output:
         print(json.dumps(output, indent=4, ensure_ascii=False))
     else:
         print("Nenhum trabalho encontrado com as skills e datas especificadas.")
-
 
     #recebe a lista de skills e datas de início e de fim [skill1, skill2, skill3] dataInicial dataFinal
     #argumento opcional para csv
