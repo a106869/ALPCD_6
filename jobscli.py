@@ -1,8 +1,9 @@
 import typer
-from typing import Optional, Annotated, List
+from typing import List
 import requests #pede acesso ao api
 from datetime import datetime
 import json
+import csv
 
 API_KEY = '71c6f8366ef375e8b61b33a56a2ce9d9'
 headers = {
@@ -14,6 +15,32 @@ def response(page): #função para fazer a requisição
     response = requests.get(url, headers=headers)
     data = response.json()
     return data
+
+def exportar_csv(data, filename='jobs.csv'): 
+    fieldnames = ["Título", "Empresa", "Descrição", "Data de publicação", "Localização", "Salário"]
+    with open(filename, 'w', newline='', encoding='utf-8') as file:
+        writer = csv.DictWriter(file, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(data)
+    print(f"Dados exportados para {filename}")
+
+def exibir_output(jobs):
+    output = []
+    for job in jobs:
+        job_info = {
+            "Título": job.get('title', 'NA'),
+            "Empresa": job.get('company', {}).get('name', 'NA'),
+            "Descrição": job.get('body', 'NA'),
+            "Data de publicação": job.get('publishedAt', 'NA'),
+            "Localização": job['locations'][0].get('name', 'NA') if job.get('locations') else 'NA',
+            "Salário": job.get('wage', 'NA')
+        }
+        output.append(job_info)
+    if output:
+        print(json.dumps(output, indent=4, ensure_ascii=False))
+    else:
+        print("Não foram encontradas correspondências para a sua pesquisa.")
+    return output
 
 app = typer.Typer()
 
@@ -34,21 +61,18 @@ def salary(n: int):
     #mesmo que o valor seja 'wage a null'; neste caso usar expressões regulares para procurar noutros campos relevantes
 
 @app.command()
-def skills(skill: List[str], datainicial: str, datafinal: str):
+def skills(skill: List[str], datainicial: str, datafinal: str, export_csv: bool = False):
     """ Quais os trabalhos que requerem uma determinada lista de skills, num determinado período de tempo """    
     jobs = []
     page = 1
-    
     while True:
         data = response(page) 
         if 'results' not in data or not data['results']:
             break
         jobs.extend(data['results']) 
         page += 1
-
     datainicial = datetime.strptime(datainicial, '%Y-%m-%d') # converter as datas para datetime
     datafinal = datetime.strptime(datafinal, '%Y-%m-%d')
-    
     jobs_filtered = []
     for job in jobs:
         publishedAt = job['publishedAt']
@@ -57,30 +81,9 @@ def skills(skill: List[str], datainicial: str, datafinal: str):
             job_skills = job.get('body', '').lower()  # converter para minúsculas para facilitar a comparação
             if all(s.lower() in job_skills for s in skill):
                 jobs_filtered.append(job)
-
-    output = []
-    for job in jobs_filtered:
-        job_info = {
-            "Título": job.get('title', 'NA'),
-            "Empresa": job.get('company', {}).get('name', 'NA'),
-            "Descrição": job.get('body', 'NA'),
-            "Data de publicação": job.get('publishedAt', 'NA'), 
-            "Localização": job['locations'][0].get('name', 'NA') if job.get('locations') else 'NA', 
-            "Salário": job.get('wage', 'NA')
-        }
-        output.append(job_info)
-    
-    # output em formato JSON
-    if output:
-        print(json.dumps(output, indent=4, ensure_ascii=False))
-    else:
-        print("Nenhum trabalho encontrado com as skills e datas especificadas.")
-
-    #recebe a lista de skills e datas de início e de fim [skill1, skill2, skill3] dataInicial dataFinal
-    #argumento opcional para csv
-
-#para cada funcionalidade (exceto salary), deve poder exportar para CSV a informação com os campos: título, empresa, descrição, data de publicação, salário e localização
-#para isso, é necessário poder adicionar um argumento opcional a cada um dos comandos
+    output = exibir_output(jobs_filtered)
+    if export_csv:
+        exportar_csv(output)
 
 if __name__ == "__main__":
     app()
