@@ -15,7 +15,6 @@ def response(page): #função para fazer a requisição
     data = response.json()
     return data
 
-
 def exportar_csv(data, filename='jobs.csv'): 
     fieldnames = ["Título", "Empresa", "Descrição", "Data de publicação", "Localização", "Salário"]
     with open(filename, 'w', newline='', encoding='utf-8') as file:
@@ -23,6 +22,24 @@ def exportar_csv(data, filename='jobs.csv'):
         writer.writeheader()
         writer.writerows(data)
     print(f"Dados exportados para {filename}")
+
+def exibir_output(jobs):
+    output = []
+    for job in jobs:
+        job_info = {
+            "Título": job.get('title', 'NA'),
+            "Empresa": job.get('company', {}).get('name', 'NA'),
+            "Descrição": job.get('body', 'NA'),
+            "Data de publicação": job.get('publishedAt', 'NA'),
+            "Localização": job['locations'][0].get('name', 'NA') if job.get('locations') else 'NA',
+            "Salário": job.get('wage', 'NA')
+        }
+        output.append(job_info)
+    if output:
+        print(json.dumps(output, indent=4, ensure_ascii=False))
+    else:
+        print("Não foram encontradas correspondências para a sua pesquisa.")
+    return output
 
 app = typer.Typer()
 
@@ -39,26 +56,12 @@ def top(n: int, export_csv: bool = False):
         if not data['results']: 
             break
     jobs = jobs[:n]
-    output = []
-    for job in jobs:
-        job_info = {
-            "Título": job.get('title', 'NA'),
-            "Empresa": job.get('company', {}).get('name', 'NA'),
-            "Descrição": job.get('body', 'NA'),
-            "Data de publicação": job.get('publishedAt', 'NA'), 
-            "Localização": job['locations'][0].get('name', 'NA') if job.get('locations') else 'NA', 
-            "Salário": job.get('wage', 'NA')
-        }
-        output.append(job_info)
-    if output:
-        print(json.dumps(output, indent=4, ensure_ascii=False))
-    else:
-        print("Não foram encontradas correspondências para a sua pesquisa.")
+    output = exibir_output(jobs)
     if export_csv:
         exportar_csv(output)
 
 @app.command()
-def search(nome: str, localidade: str, n: Optional[int] = None, csv: bool = False):
+def search(nome: str, localidade: str, n: Optional[int] = None, export_csv: bool = False):
     """ Lista todos os trabalhos full-time publicados por uma determinada empresa, numa determinada região. 
     Insira o nome da empresa e da localidade entre aspas para melhor funcionamento. """
     jobs_full_time = []
@@ -78,29 +81,9 @@ def search(nome: str, localidade: str, n: Optional[int] = None, csv: bool = Fals
         page += 1    
     if n is not None:
         jobs_full_time = jobs_full_time[:n]
-    print(json.dumps(jobs_full_time, indent=4, ensure_ascii=False))
-    for x in jobs_full_time:
-        title = x.get('title', 'NA')
-        company_name = x.get('company', {}).get('name', 'NA')
-        body = x.get('body', 'NA')
-        published_at = x.get('publishedAt', 'NA')
-        try:
-            location = x['locations'][0].get('name', 'NA') 
-        except (IndexError, KeyError): 
-            location = 'NA'
-        wage = x.get('wage', 'NA')
-        print(f"Título: {title}")
-        print(f"Empresa: {company_name}")
-        print(f"Descrição: {body}")
-        print(f"Data de publicação: {published_at}")
-        print(f"Localização: {location}")
-        print(f"Salário: {wage}")
-
-
-#if csv:
-    #tem que permitir inserir o número de traablhos a apresentar, caso contrário apresenta todos os trabalhos
-    #argumento opcional para csv
-
+    output = exibir_output(jobs_full_time)
+    if export_csv:
+        exportar_csv(output) 
 
 @app.command()
 def salary(n: int):
