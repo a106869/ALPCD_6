@@ -1,13 +1,13 @@
 import typer
-from typing import List
+from typing import List, Optional
 import requests #pede acesso ao api
 from datetime import datetime
 import json
 import csv
+import re
 
 API_KEY = '71c6f8366ef375e8b61b33a56a2ce9d9'
-headers = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36', #engana o api a pensar que estou a aceder pro um navegador
+headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36', #engana o api a pensar que estou a aceder pro um navegador
 }
 
 def response(page): #função para fazer a requisição
@@ -45,20 +45,75 @@ def exibir_output(jobs):
 app = typer.Typer()
 
 @app.command()
-def top(n: int):
-    """ Lista os N trabalhos mais recentes publicados pela itjobs.pt"""
-    #argumento opcional para csv
+def top(n: int, export_csv: bool = False):
+    """ Lista os N trabalhos mais recentes publicados pela itjobs.pt """
+    jobs = []
+    page = 1
+    while len(jobs) < n:
+        data = response(page)
+        jobs += data['results']
+        page += 1
+        if not data['results']: 
+            break
+    jobs = jobs[:n]
+    output = exibir_output(jobs)
+    if export_csv:
+        exportar_csv(output)
 
 @app.command()
-def search(n: int):
-    """ Lista todos os trabalhos full-time publicados por uma determminada empresa, numa determinada região"""
-    #tem que permitir inserir o número de traablhos a apresentar, caso contrário apresenta todos os trabalhos
-    #argumento opcional para csv
+def search(nome: str, localidade: str, n: Optional[int] = None, export_csv: bool = False):
+    """ Lista todos os trabalhos full-time publicados por uma determinada empresa, numa determinada região. 
+    Insira o nome da empresa e da localidade entre aspas para melhor funcionamento. """
+    jobs_full_time = []
+    page = 1 
+    while True:
+        data = response(page)
+        if 'results' not in data or not data['results']: # verificar se a chave 'results' existe; verificar se 'results está vazio'
+            break
+        for job in data['results']:
+            company_name = job.get('company', {}).get('name', None)  
+            if company_name == nome:
+                types = job.get('types', [{}]) 
+                if types[0].get('name') == 'Full-time':
+                    locations = job.get('locations', [{}]) 
+                    if any(location.get('name', None) == localidade for location in locations):
+                        jobs_full_time.append(job) 
+        page += 1    
+    if n is not None:
+        jobs_full_time = jobs_full_time[:n]
+    output = exibir_output(jobs_full_time)
+    if export_csv:
+        exportar_csv(output) 
 
 @app.command()
-def salary(n: int):
-    """ Extrai a informação relativa ao salário oferecido por uma determinado job id"""
-    #mesmo que o valor seja 'wage a null'; neste caso usar expressões regulares para procurar noutros campos relevantes
+def salary(job_id: int):
+    """Extrai o salário de uma vaga pelo job_id."""
+    page = 1
+    while True:
+        data = response(page)
+        if 'results' not in data or not data['results']:
+            print(f"Job com ID {job_id} não encontrado.")
+            break
+        job = None
+        for job in data['results']:
+            if job['id'] == job_id:
+                break
+        else:
+            job = None
+        if job:
+            wage = job.get("wage")
+            if wage:
+                print(f"Salário: {wage}")
+            else:
+                body = job.get("body", "")
+                wage_match = re.search(r"(\d{3,}([.,]\d{3})?\s?(€|\$|USD|£|₹))", body)
+                if wage_match:
+                    estimated_wage = wage_match.group(0) #group retorna as partes da string que correspondem ao padrão da repex
+                    print(f"Salário: {estimated_wage}") #0 é o índice da correspondência
+                else:
+                    print("Salário não especificado")
+            break
+        page += 1
 
 @app.command()
 def skills(skill: List[str], datainicial: str, datafinal: str, export_csv: bool = False):
