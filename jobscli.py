@@ -172,5 +172,36 @@ def contacto(job_id:int):
     else:
         print("Nenhum número de telefone especificado.")
 
+@app.command()
+def email(job_id: int): 
+    """Extrai o email mencionado numa vaga."""
+    page = 1
+    emails = None
+    while True:
+        data = response(page)
+        if 'results' not in data or not data['results']:
+            emails = None
+            break
+        job = None
+        for x in data['results']:
+            if x['id'] == job_id:
+                job = x
+                break
+        if job: 
+            company = job.get('company', {})
+            emails = company.get('email')
+            if not emails:
+                body = job.get("body", None)
+                emails = re.findall(r"\b[A-Za-z0-9._]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b", body)
+                if not emails:
+                    description = company.get('description', None)
+                    emails = re.findall(r"\b[A-Za-z0-9._]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b", description)
+            break
+        page += 1
+    if emails:
+        print(f"Emails disponíveis: {emails}")
+    else:
+        print("Nenhum email especificado.")
+
 if __name__ == "__main__":
     app()
