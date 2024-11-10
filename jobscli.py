@@ -7,7 +7,8 @@ import csv
 import re
 
 API_KEY = '71c6f8366ef375e8b61b33a56a2ce9d9'
-headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36', #engana o api a pensar que estou a aceder pro um navegador
+headers = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36', #engana o api a pensar que estou a aceder pro um navegador
 }
 
 def response(page): #função para fazer a requisição
@@ -139,6 +140,37 @@ def skills(skill: List[str], datainicial: str, datafinal: str, export_csv: bool 
     output = exibir_output(jobs_filtered)
     if export_csv:
         exportar_csv(output)
+
+@app.command()
+def contacto(job_id:int):
+    """ Extrai o número de telefone mencionado numa vaga. """
+    page = 1 
+    phones = None 
+    while True: 
+        data = response(page) 
+        if 'results' not in data or not data['results']: 
+            phones = None 
+            break
+        job = None 
+        for x in data['results']: 
+            if x['id'] == job_id: 
+                job = x 
+                break 
+        if job: 
+            company = job.get('company', {}) 
+            phones = company.get('phone') 
+            if not phones: 
+                body = job.get("body", None) 
+                phones = re.findall(r"\b((\+351)?(9|2)\d{2}\s?\d{3}\s?\d{3})\b", body) 
+                if not phones:
+                    description = company.get('description', None)
+                    phones = re.findall(r"\b((\+351)?(9|2)\d{2}\s?\d{3}\s?\d{3})\b", description)
+            break
+        page += 1 
+    if phones: 
+        print(f"Telefones disponíveis: {phones}") 
+    else:
+        print("Nenhum número de telefone especificado.")
 
 if __name__ == "__main__":
     app()
