@@ -161,10 +161,10 @@ def contacto(job_id:int):
             phones = company.get('phone') 
             if not phones: 
                 body = job.get("body", None) 
-                phones = re.findall(r"\b((\+351)?(9|2)\d{2}\s?\d{3}\s?\d{3})\b", body) 
+                phones = re.search(r"\b((\+351)?(9|2)\d{2}\s?\d{3}\s?\d{3})\b", body) 
                 if not phones:
                     description = company.get('description', None)
-                    phones = re.findall(r"\b((\+351)?(9|2)\d{2}\s?\d{3}\s?\d{3})\b", description)
+                    phones = re.search(r"\b((\+351)?(9|2)\d{2}\s?\d{3}\s?\d{3})\b", description)
             break
         page += 1 
     if phones: 
@@ -192,10 +192,10 @@ def email(job_id: int):
             emails = company.get('email')
             if not emails:
                 body = job.get("body", None)
-                emails = re.findall(r"\b[A-Za-z0-9._]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b", body)
+                emails = re.search(r"\b[A-Za-z0-9._]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b", body)
                 if not emails:
                     description = company.get('description', None)
-                    emails = re.findall(r"\b[A-Za-z0-9._]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b", description)
+                    emails = re.search(r"\b[A-Za-z0-9._]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b", description)
             break
         page += 1
     if emails:
