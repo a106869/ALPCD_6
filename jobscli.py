@@ -6,6 +6,8 @@ import json
 import csv
 import re
 
+#######aaaaaaaaaaaaaaaa
+
 API_KEY = '71c6f8366ef375e8b61b33a56a2ce9d9'
 headers = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36', #engana o api a pensar que estou a aceder pro um navegador
