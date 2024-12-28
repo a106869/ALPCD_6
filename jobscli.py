@@ -206,5 +206,36 @@ def email(job_id: int):
     else:
         print("Nenhum email especificado.")
 
+@app.command()
+def get(job_id: int, export_csv: bool = False):
+    """Informações sobre uma vaga específica a partir do job_id."""
+    page = 1
+    job_details = None
+    while True:
+        data = response(page)
+        if 'results' not in data or not data['results']:
+            print(f"Vaga com ID {job_id} não encontrado.")
+            break
+        for job in data['results']:
+            if job['id'] == job_id:
+                job_details = {
+                    "Título": job.get('title', 'NA'),
+                    "Empresa": job.get('company', {}).get('name', 'NA'),
+                    "Descrição": job.get('body', 'NA'),
+                    "Data de publicação": job.get('publishedAt', 'NA'),
+                    "Localização": job['locations'][0].get('name', 'NA') if job.get('locations') else 'NA',
+                    "Salário": job.get('wage', 'NA')
+                }
+                break
+        if job_details:
+            break
+        page += 1
+    if job_details:
+        print(json.dumps(job_details, indent=4, ensure_ascii=False))
+        if export_csv:
+            exportar_csv([job_details], filename=f'job_{job_id}.csv')
+    else:
+        print(f"Vaga com ID {job_id} não encontrados.")
+
 if __name__ == "__main__":
     app()
