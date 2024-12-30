@@ -67,7 +67,6 @@ def fetch_ambitionbox_data(company_name):
     response = requests.get(url, headers=headers)
     if response.status_code != 200:
         return {
-            "ambition erro"
             "Rating da empresa (0 a 5)": "NA",
             "Principais benefícios de trabalhar na empresa": "NA"
         }
@@ -84,7 +83,6 @@ def fetch_ambitionbox_data(company_name):
         for h4 in h4_elements[:3]:
             benefits += [h4.get_text()]
     return {
-        "ambition"
         "Rating da empresa (0 a 5)": rating,
         "Principais benefícios de trabalhar na empresa": benefits
     }
@@ -95,7 +93,6 @@ def fetch_indeed_data(company_name):
     response = requests.get(url, headers=headers)
     if response.status_code != 200:
         return {
-            "indeed erro"
             "Rating da empresa (0 a 5)": "NA",
             "Setor da empresa": "NA"
         }
@@ -111,7 +108,6 @@ def fetch_indeed_data(company_name):
     else: 
         setor = "NA"
     return {
-        "indeed"
         "Rating da empresa (0 a 5)": rating,
         "Setor da empresa": setor
     }
@@ -122,7 +118,6 @@ def fetch_hired_data(company_name):
     response = requests.get(url, headers=headers)
     if response.status_code != 200:
         return {
-            "simply hired erro"
             "Rating da empresa (0 a 5)": "NA",
             "Setor da empresa": "NA",
             "Principais benefícios de trabalhar na empresa": "NA"
@@ -147,7 +142,6 @@ def fetch_hired_data(company_name):
     else: 
         setor = "NA"
     return {
-        "simplyhired"
         "Rating da empresa (0 a 5)": rating,
         "Setor da empresa": setor,
         "Principais benefícios de trabalhar na empresa": benefits
