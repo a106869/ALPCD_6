@@ -6,9 +6,8 @@ import json
 import csv
 import re
 from bs4 import BeautifulSoup
-from collections import defaultdict
+from collections import defaultdict, Counter
 
-API_KEY = '71c6f8366ef375e8b61b33a56a2ce9d9'
 headers = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:98.0) Gecko/20100101 Firefox/98.0',
     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
@@ -61,6 +60,25 @@ def exibir_output(jobs):
     else:
         print("Não foram encontradas correspondências para a sua pesquisa.")
     return output
+# skills de um job específico
+def get_skills_from_job(job_url: str):
+    response = requests.get(job_url, headers=headers)
+    response.raise_for_status()
+    soup = BeautifulSoup(response.text, 'html.parser')
+    skills_elements = soup.find_all('a', class_='body-medium chip') #tags das skills
+    skills = [skill.get_text(strip=True).lower() for skill in skills_elements] #nome das skills
+    return skills
+
+# links dos jobs na página de pesquisa
+def get_job_urls(job_title: str):
+    job_title = job_title.replace(" ", "-") #limpa o nome do job
+    url = f"https://www.ambitionbox.com/jobs/{job_title}-jobs-prf"
+    response = requests.get(url, headers=headers)
+    response.raise_for_status()
+    soup = BeautifulSoup(response.text, 'html.parser')
+    job_elements = soup.find_all('div', class_='jobsInfoCardCont') #divs com os links dos jobs
+    job_urls = [f"https://www.ambitionbox.com{job.find('a')['href']}" for job in job_elements] #urls dos jobs
+    return job_urls
 
 def fetch_ambitionbox_data(company_name):
     """Obtém informações sobre a empresa do site AmbitionBox."""
@@ -147,7 +165,6 @@ def fetch_hired_data(company_name):
         "Setor da empresa": setor,
         "Principais benefícios de trabalhar na empresa": benefits
     }
-
 app = typer.Typer()
 
 @app.command()
@@ -165,7 +182,6 @@ def top(n: int, export_csv: bool = False):
     output = exibir_output(jobs)
     if export_csv:
         exportar_csv(output)
-
 @app.command()
 def search(nome: str, localidade: str, n: Optional[int] = None, export_csv: bool = False):
     """ Lista todos os trabalhos full-time publicados por uma determinada empresa, numa determinada região. 
@@ -333,7 +349,7 @@ def statistics(export_csv: bool = False):
     )
     if export_csv:
         exportar_csv(data_to_export)
-
+ 
 @app.command()
 def get_job_details(job_id: int, export_csv: bool = False, indeed: bool = False, simplyhired: bool = False):
     """Retorna informações detalhadas sobre uma vaga específica pelo job_id."""
@@ -376,6 +392,21 @@ def get_job_details(job_id: int, export_csv: bool = False, indeed: bool = False,
             exportar_csv([job_details], filename=f'job_{job_id}.csv')
     else:
         print(f"Detalhes do job com ID {job_id} não encontrados.")
+
+@app.command()
+def list_skills(job_title: str, export_csv: bool = False):
+    """Listar as skills mais pedidas para um trabalho."""
+    job_urls = get_job_urls(job_title)
+    all_skills = []
+    for url in job_urls: #para cada url, vai buscar as skills
+        skills = get_skills_from_job(url)
+        all_skills.extend(skills)
+    skill_count = Counter(all_skills)
+    top_skills = skill_count.most_common(10)
+    skills = [{"skill": skill, "count": count} for skill, count in top_skills] #ordena as skills por ordem crescente de frequência
+    print(json.dumps(skills, indent=4))
+    if export_csv:
+        exportar_csv(skills, filename=f'lista_skills_{job_title}.csv')
 
 if __name__ == "__main__":
     app()
