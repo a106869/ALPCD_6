@@ -73,5 +73,5 @@ def list_skills(job_title: str, export_csv: bool = False):
     if export_csv:
         exportar_csv(skills, filename=f'lista_skills_{job_title}.csv')
 
-if _name_ == "_main_":
+if __name__ == "_main_":
     app()
