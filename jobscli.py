@@ -5,6 +5,7 @@ from datetime import datetime
 import json
 import csv
 import re
+from collections import defaultdict
 
 API_KEY = '71c6f8366ef375e8b61b33a56a2ce9d9'
 headers = {
@@ -17,8 +18,14 @@ def response(page): #função para fazer a requisição
     data = response.json()
     return data
 
-def exportar_csv(data, filename='jobs.csv'): 
-    fieldnames = ["Título", "Empresa", "Descrição", "Data de publicação", "Localização", "Salário"]
+def exportar_csv(data, filename='jobs.csv'):
+    if not data:
+        return
+    fieldnames = list(data[0].keys()) #ordem do cabeçalho com base no primeiro elemento
+    for entry in data[1:]: #todas as chaves são incluídas, mesmo se variarem entre entradas
+        for key in entry.keys():
+            if key not in fieldnames:
+                fieldnames.append(key)
     with open(filename, 'w', newline='', encoding='utf-8') as file:
         writer = csv.DictWriter(file, fieldnames=fieldnames)
         writer.writeheader()
@@ -202,6 +209,32 @@ def email(job_id: int):
         print(f"Emails disponíveis: {emails}")
     else:
         print("Nenhum email especificado.")
+    
+@app.command()
+def statistics(export_csv: bool = False):
+    """Cria um ficheiro CSV com as seguintes colunas: Título, Zona, Tipo de Trabalho, Nº de Vagas."""
+    statistics = defaultdict(int)  
+    page = 1
+    while True:
+        data = response(page)
+        if not data.get('results'):
+            break
+        for job in data['results']:
+            title = job.get("title", "").lower()
+            locations = job.get("locations", [])
+            types = job.get("types", [])
+            for location in locations:
+                for job_type in types:
+                    key = (title, location.get("name", ""), job_type.get("name", ""))
+                    statistics[key] += 1 
+        page += 1
+    data_to_export = sorted(
+        [{"Título": key[0], "Zona": key[1], "Tipo de Trabalho": key[2], "Nº de Vagas": count}
+         for key, count in statistics.items()],
+        key=lambda x: x["Título"] 
+    )
+    if export_csv:
+        exportar_csv(data_to_export)
 
 if __name__ == "_main_":
     app()
