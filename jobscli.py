@@ -1,13 +1,11 @@
 import typer
 from typing import List, Optional
-import requests
+import requests #pede acesso ao api
 from datetime import datetime
 import json
 import csv
 import re
 from collections import defaultdict
-
-##########b
 
 API_KEY = '71c6f8366ef375e8b61b33a56a2ce9d9'
 headers = {
@@ -214,36 +212,27 @@ def email(job_id: int):
     
 @app.command()
 def statistics(export_csv: bool = False):
-    """
-    Cria um ficheiro CSV com as seguintes colunas: Título, Zona, Tipo de Trabalho, Nº de Vagas.
-    """
-    statistics = defaultdict(int)  # Usar defaultdict para simplificar a contagem
+    """Cria um ficheiro CSV com as seguintes colunas: Título, Zona, Tipo de Trabalho, Nº de Vagas."""
+    statistics = defaultdict(int)  
     page = 1
-
     while True:
         data = response(page)
         if not data.get('results'):
             break
-        
         for job in data['results']:
             title = job.get("title", "").lower()
             locations = job.get("locations", [])
             types = job.get("types", [])
-            
             for location in locations:
                 for job_type in types:
                     key = (title, location.get("name", ""), job_type.get("name", ""))
-                    statistics[key] += 1  # Incrementar diretamente
-
+                    statistics[key] += 1 
         page += 1
-
-    # Criar a lista de dados a serem exportados e ordenar pelos títulos
     data_to_export = sorted(
         [{"Título": key[0], "Zona": key[1], "Tipo de Trabalho": key[2], "Nº de Vagas": count}
          for key, count in statistics.items()],
-        key=lambda x: x["Título"]  # Ordenar pelo título
+        key=lambda x: x["Título"] 
     )
-
     if export_csv:
         exportar_csv(data_to_export)
 
