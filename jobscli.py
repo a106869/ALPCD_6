@@ -9,9 +9,6 @@ from bs4 import BeautifulSoup
 from collections import defaultdict, Counter
 
 API_KEY = '71c6f8366ef375e8b61b33a56a2ce9d9'
-headers = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36', #engana o api a pensar que estou a aceder pro um navegador
-}
 
 headers = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:98.0) Gecko/20100101 Firefox/98.0',
@@ -65,6 +62,7 @@ def exibir_output(jobs):
     else:
         print("Não foram encontradas correspondências para a sua pesquisa.")
     return output
+    
 # skills de um job específico
 def get_skills_from_job(job_url: str):
     response = requests.get(job_url, headers=headers)
