@@ -6,6 +6,7 @@ import json
 import csv
 import re
 from bs4 import BeautifulSoup
+from collections import defaultdict
 
 API_KEY = '71c6f8366ef375e8b61b33a56a2ce9d9'
 headers = {
@@ -148,6 +149,190 @@ def fetch_hired_data(company_name):
     }
 
 app = typer.Typer()
+
+@app.command()
+def top(n: int, export_csv: bool = False):
+    """ Lista os N trabalhos mais recentes publicados pela itjobs.pt """
+    jobs = []
+    page = 1
+    while len(jobs) < n:
+        data = response(page)
+        jobs += data['results']
+        page += 1
+        if not data['results']: 
+            break
+    jobs = jobs[:n]
+    output = exibir_output(jobs)
+    if export_csv:
+        exportar_csv(output)
+
+@app.command()
+def search(nome: str, localidade: str, n: Optional[int] = None, export_csv: bool = False):
+    """ Lista todos os trabalhos full-time publicados por uma determinada empresa, numa determinada região. 
+    Insira o nome da empresa e da localidade entre aspas para melhor funcionamento. """
+    jobs_full_time = []
+    page = 1 
+    while True:
+        data = response(page)
+        if 'results' not in data or not data['results']: # verificar se a chave 'results' existe; verificar se 'results está vazio'
+            break
+        for job in data['results']:
+            company_name = job.get('company', {}).get('name', None)  
+            if company_name == nome:
+                types = job.get('types', [{}]) 
+                if types[0].get('name') == 'Full-time':
+                    locations = job.get('locations', [{}]) 
+                    if any(location.get('name', None) == localidade for location in locations):
+                        jobs_full_time.append(job) 
+        page += 1    
+    if n is not None:
+        jobs_full_time = jobs_full_time[:n]
+    output = exibir_output(jobs_full_time)
+    if export_csv:
+        exportar_csv(output) 
+
+@app.command()
+def salary(job_id: int):
+    """Extrai o salário de uma vaga pelo job_id."""
+    page = 1
+    while True:
+        data = response(page)
+        if 'results' not in data or not data['results']:
+            print(f"Job com ID {job_id} não encontrado.")
+            break
+        job = None
+        for job in data['results']:
+            if job['id'] == job_id:
+                break
+        else:
+            job = None
+        if job:
+            wage = job.get("wage")
+            if wage:
+                print(f"Salário: {wage}")
+            else:
+                body = job.get("body", "")
+                wage_match = re.search(r"(\d{3,}([.,]\d{3})?\s?(€|\$|USD|£|₹))", body)
+                if wage_match:
+                    estimated_wage = wage_match.group(0) #group retorna as partes da string que correspondem ao padrão da repex
+                    print(f"Salário: {estimated_wage}") #0 é o índice da correspondência
+                else:
+                    print("Salário não especificado")
+            break
+        page += 1
+
+@app.command()
+def skills(skill: List[str], datainicial: str, datafinal: str, export_csv: bool = False):
+    """ Quais os trabalhos que requerem uma determinada lista de skills, num determinado período de tempo """    
+    jobs = []
+    page = 1
+    while True:
+        data = response(page) 
+        if 'results' not in data or not data['results']:
+            break
+        jobs.extend(data['results']) 
+        page += 1
+    datainicial = datetime.strptime(datainicial, '%Y-%m-%d') # converter as datas para datetime
+    datafinal = datetime.strptime(datafinal, '%Y-%m-%d')
+    jobs_filtered = []
+    for job in jobs:
+        publishedAt = job['publishedAt']
+        dataApi = datetime.strptime(publishedAt.split(' ')[0], '%Y-%m-%d')
+        if datainicial <= dataApi <= datafinal:
+            job_skills = job.get('body', '').lower()  # converter para minúsculas para facilitar a comparação
+            if all(s.lower() in job_skills for s in skill):
+                jobs_filtered.append(job)
+    output = exibir_output(jobs_filtered)
+    if export_csv:
+        exportar_csv(output)
+
+@app.command()
+def contacto(job_id:int):
+    """ Extrai o número de telefone mencionado numa vaga. """
+    page = 1 
+    phones = None 
+    while True: 
+        data = response(page) 
+        if 'results' not in data or not data['results']: 
+            phones = None 
+            break
+        job = None 
+        for x in data['results']: 
+            if x['id'] == job_id: 
+                job = x 
+                break 
+        if job: 
+            company = job.get('company', {}) 
+            phones = company.get('phone') 
+            if not phones: 
+                body = job.get("body", None) 
+                phones = re.search(r"\b((\+351)?(9|2)\d{2}\s?\d{3}\s?\d{3})\b", body) 
+                if not phones:
+                    description = company.get('description', None)
+                    phones = re.search(r"\b((\+351)?(9|2)\d{2}\s?\d{3}\s?\d{3})\b", description)
+            break
+        page += 1 
+    if phones: 
+        print(f"Telefones disponíveis: {phones}") 
+    else:
+        print("Nenhum número de telefone especificado.")
+
+@app.command()
+def email(job_id: int): 
+    """Extrai o email mencionado numa vaga."""
+    page = 1
+    emails = None
+    while True:
+        data = response(page)
+        if 'results' not in data or not data['results']:
+            emails = None
+            break
+        job = None
+        for x in data['results']:
+            if x['id'] == job_id:
+                job = x
+                break
+        if job: 
+            company = job.get('company', {})
+            emails = company.get('email')
+            if not emails:
+                body = job.get("body", None)
+                emails = re.search(r"\b[A-Za-z0-9._]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b", body)
+                if not emails:
+                    description = company.get('description', None)
+                    emails = re.search(r"\b[A-Za-z0-9._]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b", description)
+            break
+        page += 1
+    if emails:
+        print(f"Emails disponíveis: {emails}")
+    else:
+        print("Nenhum email especificado.")
+    
+@app.command()
+def statistics(export_csv: bool = False):
+    """Cria um ficheiro CSV com as seguintes colunas: Título, Zona, Tipo de Trabalho, Nº de Vagas."""
+    statistics = defaultdict(int)  
+    page = 1
+    while True:
+        data = response(page)
+        if not data.get('results'):
+            break
+        for job in data['results']:
+            title = job.get("title", "").lower()
+            locations = job.get("locations", [])
+            types = job.get("types", [])
+            for location in locations:
+                for job_type in types:
+                    key = (title, location.get("name", ""), job_type.get("name", ""))
+                    statistics[key] += 1 
+        page += 1
+    data_to_export = sorted(
+        [{"Título": key[0], "Zona": key[1], "Tipo de Trabalho": key[2], "Nº de Vagas": count}
+         for key, count in statistics.items()],
+        key=lambda x: x["Título"] 
+    )
+    if export_csv:
+        exportar_csv(data_to_export)
 
 @app.command()
 def get_job_details(job_id: int, export_csv: bool = False, indeed: bool = False, simplyhired: bool = False):
