@@ -165,6 +165,7 @@ def fetch_hired_data(company_name):
         "Setor da empresa": setor,
         "Principais benefícios de trabalhar na empresa": benefits
     }
+
 app = typer.Typer()
 
 @app.command()
@@ -182,6 +183,7 @@ def top(n: int, export_csv: bool = False):
     output = exibir_output(jobs)
     if export_csv:
         exportar_csv(output)
+
 @app.command()
 def search(nome: str, localidade: str, n: Optional[int] = None, export_csv: bool = False):
     """ Lista todos os trabalhos full-time publicados por uma determinada empresa, numa determinada região. 
