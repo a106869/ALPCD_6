@@ -67,6 +67,7 @@ def fetch_ambitionbox_data(company_name):
     response = requests.get(url, headers=headers)
     if response.status_code != 200:
         return {
+            "ambition erro"
             "Rating da empresa (0 a 5)": "NA",
             "Principais benefícios de trabalhar na empresa": "NA"
         }
@@ -83,6 +84,7 @@ def fetch_ambitionbox_data(company_name):
         for h4 in h4_elements[:3]:
             benefits += [h4.get_text()]
     return {
+        "ambition"
         "Rating da empresa (0 a 5)": rating,
         "Principais benefícios de trabalhar na empresa": benefits
     }
@@ -93,6 +95,7 @@ def fetch_indeed_data(company_name):
     response = requests.get(url, headers=headers)
     if response.status_code != 200:
         return {
+            "indeed erro"
             "Rating da empresa (0 a 5)": "NA",
             "Setor da empresa": "NA"
         }
@@ -108,14 +111,52 @@ def fetch_indeed_data(company_name):
     else: 
         setor = "NA"
     return {
+        "indeed"
         "Rating da empresa (0 a 5)": rating,
         "Setor da empresa": setor
+    }
+
+def fetch_hired_data(company_name):
+    """Obtém informações sobre a empresa do site SimplyHired."""
+    url = f"https://www.simplyhired.pt/company/{company_name.replace(' ', '-').lower()}"
+    response = requests.get(url, headers=headers)
+    if response.status_code != 200:
+        return {
+            "simply hired erro"
+            "Rating da empresa (0 a 5)": "NA",
+            "Setor da empresa": "NA",
+            "Principais benefícios de trabalhar na empresa": "NA"
+        }
+    soup = BeautifulSoup(response.text, 'html.parser')
+    rating_span = soup.find('span', {'aria-hidden': 'true'})
+    if rating_span > 0:
+        rating = rating_span.text
+    else: 
+        rating = "NA"
+
+    divisoes = soup.find_all('p', class_='chakra-text css-1tluwxv')
+    if divisoes:
+        benefits = []
+        for divisao in divisoes[:3]:
+            texto = divisao.get_text(strip=True).split('"')[-1]  # Extrair apenas o texto principal
+            benefits.append(texto)
+
+    setor_div = soup.find(attrs={"data-testid": "cp-industry"}).find_next("p")
+    if setor_div:
+        setor = setor_div.text
+    else: 
+        setor = "NA"
+    return {
+        "simplyhired"
+        "Rating da empresa (0 a 5)": rating,
+        "Setor da empresa": setor,
+        "Principais benefícios de trabalhar na empresa": benefits
     }
 
 app = typer.Typer()
 
 @app.command()
-def get_job_details(job_id: int, export_csv: bool = False):
+def get_job_details(job_id: int, export_csv: bool = False, indeed: bool = False, simplyhired: bool = False):
     """Retorna informações detalhadas sobre uma vaga específica pelo job_id."""
     page = 1
     job_details = None
@@ -137,44 +178,15 @@ def get_job_details(job_id: int, export_csv: bool = False):
                 }
                 company_name = job_details["Empresa"]
                 if company_name != "NA":
-                    ambitionbox_data = fetch_ambitionbox_data(company_name)
-                    job_details.update(ambitionbox_data)
-                break
-        if job_details:
-            break
-        page += 1
-    if job_details:
-        print(json.dumps(job_details, indent=4, ensure_ascii=False))
-        if export_csv:
-            exportar_csv([job_details], filename=f'job_{job_id}.csv')
-    else:
-        print(f"Detalhes do job com ID {job_id} não encontrados.")
-
-@app.command()
-def get_job_details_indeed(job_id: int, export_csv: bool = False):
-    """Retorna informações detalhadas sobre uma vaga específica pelo job_id."""
-    page = 1
-    job_details = None
-    while True:
-        data = response(page)
-        if 'results' not in data or not data['results']:
-            print(f"Job com ID {job_id} não encontrado.")
-            break
-        for job in data['results']:
-            if job['id'] == job_id:
-                job_details = {
-                    "Título": job.get('title', 'NA'),
-                    "Empresa": job.get('company', {}).get('name', 'NA'),
-                    "Descrição da vaga": job.get('body', 'NA'),
-                    "Data de publicação": job.get('publishedAt', 'NA'),
-                    "Localização": job['locations'][0].get('name', 'NA') if job.get('locations') else 'NA',
-                    "Salário": job.get('wage', 'NA'),
-                    "Descrição da empresa": job.get('company', {}).get('description', 'NA')
-                }
-                company_name = job_details["Empresa"]
-                if company_name != "NA":
-                    indeed_data = fetch_indeed_data(company_name)
-                    job_details.update(indeed_data)
+                    if indeed:
+                        indeed_data = fetch_indeed_data(company_name)
+                        job_details.update(indeed_data)
+                    elif simplyhired:
+                        hired_data = fetch_hired_data(company_name)
+                        job_details.update(hired_data)
+                    else:
+                        ambitionbox_data = fetch_ambitionbox_data(company_name)
+                        job_details.update(ambitionbox_data)
                 break
         if job_details:
             break
