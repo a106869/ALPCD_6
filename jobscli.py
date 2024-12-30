@@ -330,7 +330,7 @@ def email(job_id: int):
         print("Nenhum email especificado.")
     
 @app.command()
-def statistics(export_csv: bool = False):
+def statistics():
     """Cria um ficheiro CSV com as seguintes colunas: Título, Zona, Tipo de Trabalho, Nº de Vagas."""
     statistics = defaultdict(int)  
     page = 1
@@ -352,8 +352,8 @@ def statistics(export_csv: bool = False):
          for key, count in statistics.items()],
         key=lambda x: x["Título"] 
     )
-    if export_csv:
-        exportar_csv(data_to_export)
+    if data_to_export:
+        exportar_csv(data_to_export, filename= "statistics.csv")
  
 @app.command()
 def get_job_details(job_id: int, export_csv: bool = False, indeed: bool = False, simplyhired: bool = False):
