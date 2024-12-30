@@ -1,7 +1,7 @@
 import typer
 from typing import List, Optional
 import requests #pede acesso ao api
-from datetime import datetime #aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+from datetime import datetime
 import json
 import csv
 import re
